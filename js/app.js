@@ -175,11 +175,12 @@ document.querySelector("#transactionForm").addEventListener("submit", event => {
   const amount = Number(document.querySelector("#amount").value);
   const date = document.querySelector("#transactionDate").value;
   if (!description || !Number.isFinite(amount) || amount <= 0 || !date) return;
+  const wasEditing = editingId !== null;
   const record = { id: editingId ?? Date.now(), type: document.querySelector("#type").value, description, amount: Math.round(amount * 100) / 100, category: document.querySelector("#category").value, date };
-  if (editingId !== null) transactions = transactions.map(item => item.id === editingId ? record : item);
+  if (wasEditing) transactions = transactions.map(item => item.id === editingId ? record : item);
   else transactions.push(record);
   save(); render(); resetTransactionForm();
-  document.querySelector("#formFeedback").textContent = editingId === null ? "✓ Movimiento guardado correctamente." : "✓ Movimiento actualizado correctamente.";
+  document.querySelector("#formFeedback").textContent = wasEditing ? "✓ Movimiento actualizado correctamente." : "✓ Movimiento guardado correctamente.";
 });
 document.querySelector("#cancelEdit").addEventListener("click", () => {
   resetTransactionForm();
