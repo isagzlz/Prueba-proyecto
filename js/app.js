@@ -43,12 +43,14 @@ function renderSummary() {
   document.querySelector("#incomeValue").textContent = money(income);
   document.querySelector("#expenseValue").textContent = money(expense);
   document.querySelector("#artBalance").textContent = money(balance);
+  document.querySelector("#dataStatus").textContent = showingDemoData ? "✦ Datos de ejemplo" : "✦ Datos guardados";
   renderInsight(current);
+  renderPieChart(current);
 }
 function renderInsight(items) {
   const expenses = items.filter(x => x.type === "expense");
   if (!expenses.length) {
-    document.querySelector("#insightText").textContent = "Aún no registras gastos este mes. Agrega tus movimientos para descubrir tus hábitos y oportunidades de ahorro.";
+    document.querySelector("#insightText").textContent = "Antes de comprar algo, pregúntate si lo necesitas ahora o si ese dinero puede acercarte a una meta de ahorro.";
     return;
   }
   const totals = {};
@@ -56,8 +58,55 @@ function renderInsight(items) {
   const [category, amount] = Object.entries(totals).sort((a, b) => b[1] - a[1])[0];
   const total = expenses.reduce((s, x) => s + x.amount, 0);
   const share = Math.round(amount / total * 100);
-  document.querySelector("#insightText").textContent = "Tu categoría con mayor gasto es " + category.toLowerCase() + ". Representa el " + share + "% de tus gastos registrados (" + money(amount) + "). Revisa si puedes ajustar un poco ese hábito.";
+  const tips = {
+    comida: "Planear tus comidas y llevar algo preparado puede ayudarte a reducir los gastos pequeños de cada día.",
+    transporte: "Agrupar tus pendientes o compartir trayectos puede ayudarte a gastar menos en transporte.",
+    educación: "Compara precios y aprovecha materiales gratuitos antes de realizar una compra para tus estudios.",
+    entretenimiento: "Define un presupuesto para salidas y diversión; así disfrutas sin descuidar tus otras metas.",
+    compras: "Antes de comprar, espera un momento y compara opciones. Evitar compras impulsivas también es ahorrar.",
+    salud: "Reserva una parte de tu presupuesto para cuidados y gastos de salud inesperados.",
+    salario: "Procura separar una pequeña parte de cada ingreso para tu ahorro antes de empezar a gastar.",
+    otros: "Anota los gastos pequeños y revisa cuáles puedes reducir al final de la semana."
+  };
+  document.querySelector("#insightText").textContent = (tips[category.toLowerCase()] || "Revisa tus gastos con frecuencia y separa una cantidad para tus metas de ahorro.") + " Tu mayor categoría este mes es " + category.toLowerCase() + " (" + share + "% de tus gastos).";
 }
+function renderPieChart(items) {
+  const expenses = items.filter(item => item.type === "expense");
+  const totals = {};
+  expenses.forEach(item => { totals[item.category] = (totals[item.category] || 0) + item.amount; });
+  const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const pie = document.querySelector("#expensePie");
+  const legend = document.querySelector("#pieLegend");
+  const note = document.querySelector("#pieNote");
+  document.querySelector("#pieTotal").textContent = money(total);
+  legend.innerHTML = "";
+  if (!entries.length || total <= 0) {
+    pie.style.background = "conic-gradient(var(--line) 0deg 360deg)";
+    note.textContent = "Todavía no hay gastos registrados este mes.";
+    return;
+  }
+  let angle = 0;
+  const slices = entries.map(([category, amount], index) => {
+    const start = angle;
+    angle += amount / total * 360;
+    const color = PIE_COLORS[index % PIE_COLORS.length];
+    const percent = Math.round(amount / total * 100);
+    const item = document.createElement("div");
+    item.className = "pie-legend-item";
+    const dot = document.createElement("span"); dot.className = "pie-legend-dot"; dot.style.background = color;
+    const name = document.createElement("span"); name.className = "pie-legend-name"; name.textContent = category;
+    const value = document.createElement("span"); value.className = "pie-legend-value"; value.textContent = percent + "% · " + money(amount);
+    item.append(dot, name, value);
+    legend.appendChild(item);
+    return color + " " + start + "deg " + angle + "deg";
+  });
+  pie.style.background = "conic-gradient(" + slices.join(", ") + ")";
+  pie.setAttribute("aria-label", "Distribución de gastos del mes: " + entries.map(([category, amount]) => category + " " + Math.round(amount / total * 100) + "%").join(", "));
+  note.textContent = "Distribución calculada con tus gastos registrados durante este mes.";
+}
+const PIE_COLORS = ["#28b889","#8373e6","#f0a36e","#4f9bd8","#e36d8d","#8baf57","#d0a34b","#8290a5"];
+
 function getFilteredTransactions() {
   const search = document.querySelector("#searchFilter").value.trim().toLocaleLowerCase("es-MX");
   const type = document.querySelector("#typeFilter").value;
