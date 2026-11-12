@@ -4,7 +4,8 @@ const THEME_KEY = "moneymind_theme_v1";
 
 const money = value => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(value);
 const today = new Date();
-const dateKey = date => new Date(date).toISOString().slice(0, 10);
+const localDateKey = date => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+const dateKey = date => localDateKey(date);
 const sampleTransactions = [
   { id: 1, type: "income", description: "Apoyo semanal", amount: 600, category: "Salario", date: dateKey(new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - 5))) },
   { id: 2, type: "expense", description: "Comida", amount: 85, category: "Comida", date: dateKey(new Date(today.getFullYear(), today.getMonth(), Math.max(1, today.getDate() - 4))) },
@@ -16,12 +17,16 @@ function readStorage(key, fallback) {
   try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; }
   catch { return fallback; }
 }
+const hasSavedTransactions = localStorage.getItem(STORAGE_KEY) !== null;
 let transactions = readStorage(STORAGE_KEY, sampleTransactions);
+let showingDemoData = !hasSavedTransactions;
+let editingId = null;
 let goal = readStorage(GOAL_KEY, { name: "Comprar audífonos", target: 2500, current: 500 });
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
   localStorage.setItem(GOAL_KEY, JSON.stringify(goal));
+  showingDemoData = false;
 }
 function monthTransactions() {
   const month = today.getMonth(), year = today.getFullYear();
@@ -53,20 +58,54 @@ function renderInsight(items) {
   const share = Math.round(amount / total * 100);
   document.querySelector("#insightText").textContent = "Tu categoría con mayor gasto es " + category.toLowerCase() + ". Representa el " + share + "% de tus gastos registrados (" + money(amount) + "). Revisa si puedes ajustar un poco ese hábito.";
 }
+function getFilteredTransactions() {
+  const search = document.querySelector("#searchFilter").value.trim().toLocaleLowerCase("es-MX");
+  const type = document.querySelector("#typeFilter").value;
+  const category = document.querySelector("#categoryFilter").value;
+  const start = document.querySelector("#startDateFilter").value;
+  const end = document.querySelector("#endDateFilter").value;
+  return [...transactions].filter(item => {
+    const matchesSearch = !search || (item.description + " " + item.category).toLocaleLowerCase("es-MX").includes(search);
+    return matchesSearch && (type === "all" || item.type === type) && (category === "all" || item.category === category) && (!start || item.date >= start) && (!end || item.date <= end);
+  }).sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+}
 function renderTransactions() {
   const list = document.querySelector("#transactionList");
   const empty = document.querySelector("#emptyTransactions");
-  const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, 5);
+  const filtered = getFilteredTransactions();
   list.innerHTML = "";
-  empty.classList.toggle("hidden", sorted.length > 0);
-  sorted.forEach(item => {
+  empty.classList.toggle("hidden", filtered.length > 0);
+  document.querySelector("#historyCount").textContent = filtered.length + (filtered.length === 1 ? " movimiento" : " movimientos") + " · " + (showingDemoData ? "datos de ejemplo" : "datos guardados");
+  filtered.forEach(item => {
     const row = document.createElement("div");
     row.className = "transaction-row";
     const symbol = item.type === "income" ? "↙" : categorySymbol(item.category);
-    const date = new Date(item.date + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-    row.innerHTML = '<span class="transaction-icon">' + symbol + '</span><span class="transaction-meta"><strong></strong><small></small></span><span class="transaction-amount ' + item.type + '">' + (item.type === "income" ? "+" : "−") + money(item.amount) + '</span>';
-    row.querySelector("strong").textContent = item.description;
-    row.querySelector("small").textContent = item.category + " · " + date;
+    const date = new Date(item.date + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+    const icon = document.createElement("span");
+    icon.className = "transaction-icon";
+    icon.textContent = symbol;
+    const meta = document.createElement("span");
+    meta.className = "transaction-meta";
+    const title = document.createElement("strong");
+    title.textContent = item.description;
+    const detail = document.createElement("small");
+    detail.textContent = item.category + " · " + date;
+    meta.append(title, detail);
+    const amount = document.createElement("span");
+    amount.className = "transaction-amount " + item.type;
+    amount.textContent = (item.type === "income" ? "+" : "−") + money(item.amount);
+    const actions = document.createElement("span");
+    actions.className = "transaction-actions";
+    const edit = document.createElement("button");
+    edit.type = "button"; edit.className = "transaction-action"; edit.textContent = "Editar";
+    edit.setAttribute("aria-label", "Editar " + item.description);
+    edit.addEventListener("click", () => startEditing(item.id));
+    const remove = document.createElement("button");
+    remove.type = "button"; remove.className = "transaction-action delete"; remove.textContent = "Eliminar";
+    remove.setAttribute("aria-label", "Eliminar " + item.description);
+    remove.addEventListener("click", () => deleteTransaction(item.id));
+    actions.append(edit, remove);
+    row.append(icon, meta, amount, actions);
     list.appendChild(row);
   });
 }
@@ -100,16 +139,52 @@ function renderGoal() {
   document.querySelector("#goalPercent").textContent = percent + "% completado";
 }
 function render() { renderSummary(); renderTransactions(); renderChart(); renderGoal(); }
-
+function resetTransactionForm() {
+  const form = document.querySelector("#transactionForm");
+  form.reset();
+  document.querySelector("#transactionDate").value = dateKey(today);
+  editingId = null;
+  document.querySelector("#submitTransaction").textContent = "＋ Guardar movimiento";
+  document.querySelector("#cancelEdit").classList.add("hidden");
+}
+function startEditing(id) {
+  const item = transactions.find(x => x.id === id);
+  if (!item) return;
+  editingId = id;
+  document.querySelector("#type").value = item.type;
+  document.querySelector("#description").value = item.description;
+  document.querySelector("#amount").value = item.amount;
+  document.querySelector("#category").value = item.category;
+  document.querySelector("#transactionDate").value = item.date;
+  document.querySelector("#submitTransaction").textContent = "Guardar cambios";
+  document.querySelector("#cancelEdit").classList.remove("hidden");
+  document.querySelector("#formFeedback").textContent = "Editando: " + item.description;
+  document.querySelector("#addTransaction").scrollIntoView({ behavior: "smooth", block: "center" });
+  document.querySelector("#description").focus({ preventScroll: true });
+}
+function deleteTransaction(id) {
+  const item = transactions.find(x => x.id === id);
+  if (!item || !confirm('¿Eliminar el movimiento "' + item.description + '"? Esta acción no se puede deshacer.')) return;
+  transactions = transactions.filter(x => x.id !== id);
+  save(); render();
+  document.querySelector("#formFeedback").textContent = "Movimiento eliminado.";
+}
 document.querySelector("#transactionForm").addEventListener("submit", event => {
   event.preventDefault();
   const description = document.querySelector("#description").value.trim();
   const amount = Number(document.querySelector("#amount").value);
-  if (!description || !Number.isFinite(amount) || amount <= 0) return;
-  transactions.push({ id: Date.now(), type: document.querySelector("#type").value, description, amount, category: document.querySelector("#category").value, date: dateKey(today) });
-  save(); render(); event.target.reset();
-  document.querySelector("#formFeedback").textContent = "✓ Movimiento guardado correctamente.";
-  setTimeout(() => document.querySelector("#formFeedback").textContent = "", 3500);
+  const date = document.querySelector("#transactionDate").value;
+  if (!description || !Number.isFinite(amount) || amount <= 0 || !date) return;
+  const wasEditing = editingId !== null;
+  const record = { id: editingId ?? Date.now(), type: document.querySelector("#type").value, description, amount: Math.round(amount * 100) / 100, category: document.querySelector("#category").value, date };
+  if (wasEditing) transactions = transactions.map(item => item.id === editingId ? record : item);
+  else transactions.push(record);
+  save(); render(); resetTransactionForm();
+  document.querySelector("#formFeedback").textContent = wasEditing ? "✓ Movimiento actualizado correctamente." : "✓ Movimiento guardado correctamente.";
+});
+document.querySelector("#cancelEdit").addEventListener("click", () => {
+  resetTransactionForm();
+  document.querySelector("#formFeedback").textContent = "Edición cancelada.";
 });
 document.querySelector("#editGoal").addEventListener("click", () => {
   const name = prompt("¿Qué quieres lograr?", goal.name);
@@ -120,12 +195,22 @@ document.querySelector("#editGoal").addEventListener("click", () => {
   if (!Number.isFinite(current) || current < 0) return;
   goal = { name: name.trim(), target, current }; save(); renderGoal();
 });
+document.querySelectorAll("#searchFilter, #typeFilter, #categoryFilter, #startDateFilter, #endDateFilter").forEach(control => control.addEventListener("input", renderTransactions));
+document.querySelector("#resetFilters").addEventListener("click", () => {
+  document.querySelector("#searchFilter").value = "";
+  document.querySelector("#typeFilter").value = "all";
+  document.querySelector("#categoryFilter").value = "all";
+  document.querySelector("#startDateFilter").value = "";
+  document.querySelector("#endDateFilter").value = "";
+  renderTransactions();
+});
 document.querySelector("#themeToggle").addEventListener("click", () => {
   document.body.classList.toggle("dark");
   localStorage.setItem(THEME_KEY, document.body.classList.contains("dark") ? "dark" : "light");
 });
 if (readStorage(THEME_KEY, "light") === "dark") document.body.classList.add("dark");
 document.querySelector("#todayLabel").textContent = today.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+document.querySelector("#transactionDate").value = dateKey(today);
 document.querySelector("#mobileMenu").addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
 document.querySelectorAll(".nav-item").forEach(link => link.addEventListener("click", () => document.querySelector("#sidebar").classList.remove("open")));
 render();
