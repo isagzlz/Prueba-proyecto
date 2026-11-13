@@ -25,3 +25,20 @@ body.dark{--bg:#0d1726;--surface:#142238;--text:#e9f0f7;--muted:#91a1b5;--line:#
 @media(max-width:1100px){.transaction-form{grid-template-columns:repeat(3,1fr)}.transaction-form .form-actions{grid-column:span 3}.history-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.transaction-form{grid-template-columns:1fr 1fr}.transaction-form .form-actions{grid-column:span 2}.history-filters{grid-template-columns:1fr 1fr}.history-filters label:first-child{grid-column:span 2}.transaction-row{flex-wrap:wrap}.transaction-actions{margin-left:auto}}
 @media(max-width:390px){.transaction-form{grid-template-columns:1fr}.transaction-form .form-actions{grid-column:auto}.history-filters{grid-template-columns:1fr}.history-filters label:first-child{grid-column:auto}}
+
+/* Distribución de gastos por categoría */
+.category-panel{margin-bottom:17px}
+.pie-layout{display:flex;align-items:center;justify-content:center;gap:clamp(35px,8vw,110px);padding:24px 10px 8px}
+.expense-pie{width:210px;height:210px;flex:0 0 210px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--line) 0deg 360deg);position:relative}
+.pie-center{width:125px;height:125px;border-radius:50%;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.pie-center strong{font:800 17px Manrope;color:var(--text);max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.pie-center span{font-size:9px;color:var(--muted);margin-top:4px}
+.pie-legend{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:13px 22px;max-width:540px;flex:1}
+.pie-legend-item{display:flex;align-items:center;gap:8px;min-width:0;font-size:10px;color:var(--text)}
+.pie-legend-dot{width:9px;height:9px;border-radius:3px;flex:0 0 9px}
+.pie-legend-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.pie-legend-value{font-size:9px;color:var(--muted);white-space:nowrap}
+.pie-note{font-size:9px;color:var(--muted);text-align:center;margin:12px 0 0}
+.insight-panel{min-height:250px}
+.insight-bottom{justify-content:flex-start}
+@media(max-width:760px){.pie-layout{flex-direction:column;gap:22px}.pie-legend{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.expense-pie{width:190px;height:190px;flex-basis:190px}.pie-center{width:112px;height:112px}}

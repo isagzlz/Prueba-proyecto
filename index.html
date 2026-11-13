@@ -24,7 +24,6 @@
         <a class="nav-item" href="#transactions"><span class="nav-icon">↕</span>Movimientos</a>
         <a class="nav-item" href="#analytics"><span class="nav-icon">▥</span>Análisis inteligente</a>
         <a class="nav-item" href="#goals"><span class="nav-icon">◎</span>Metas de ahorro</a>
-        <a class="nav-item" href="#coach"><span class="nav-icon">✳</span>Consejero financiero <span class="soon">PRONTO</span></a>
       </nav>
       <div class="sidebar-bottom">
         <div class="tip-card">
@@ -90,15 +89,30 @@
           </div>
           <div class="chart-legend"><span><i class="legend-dot income-legend"></i>Ingresos</span><span><i class="legend-dot expense-legend"></i>Gastos</span></div>
           <div class="chart" id="weeklyChart" aria-label="Gráfica de ingresos y gastos de los últimos siete días"></div>
-          <div class="chart-foot"><span>Una mirada rápida a cómo se mueve tu dinero.</span><span class="chart-insight">✦ Datos de ejemplo</span></div>
+          <div class="chart-foot"><span>Una mirada rápida a cómo se mueve tu dinero.</span><span class="chart-insight" id="dataStatus">✦ Datos de ejemplo</span></div>
         </article>
 
         <article class="panel insight-panel">
-          <div class="insight-heading"><span class="insight-icon">✦</span><span class="eyebrow">MONEY INSIGHT</span><span class="live-tag">● ACTIVO</span></div>
-          <h2>Tu dinero te está contando algo.</h2>
+          <div class="insight-heading"><span class="insight-icon">✦</span><span class="eyebrow">MONEY TIP</span></div>
+          <h2>Un consejo para cuidar tu dinero.</h2>
           <p id="insightText">Registra tus movimientos para descubrir en qué estás gastando más y encontrar oportunidades para ahorrar.</p>
-          <div class="insight-bottom"><span>Tu análisis se actualiza al registrar movimientos.</span><span class="insight-arrow">↗</span></div>
+          <div class="insight-bottom"><span>Consejos informativos según tus movimientos.</span></div>
         </article>
+      </section>
+
+
+      <section class="panel category-panel" id="categoryBreakdown">
+        <div class="panel-heading">
+          <div><p class="eyebrow">TUS GASTOS POR CATEGORÍA</p><h2>¿En qué se va tu dinero?</h2></div>
+          <span class="period-pill">Este mes</span>
+        </div>
+        <div class="pie-layout">
+          <div class="expense-pie" id="expensePie" role="img" aria-label="Distribución de gastos por categoría">
+            <div class="pie-center"><strong id="pieTotal">$0.00</strong><span>Gastos totales</span></div>
+          </div>
+          <div class="pie-legend" id="pieLegend"></div>
+        </div>
+        <p class="pie-note" id="pieNote">La gráfica mostrará tus gastos cuando registres movimientos.</p>
       </section>
 
       <section class="lower-grid">
